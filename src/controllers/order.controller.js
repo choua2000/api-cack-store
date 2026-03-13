@@ -1,19 +1,23 @@
 import { Order, OrderItem, Product, User, sequelize } from '../models/index.js';
+import { catchAsync } from '../utils/catchAsync.js';
+import { AppError } from '../middlewares/error.js';
 
 // CREATE order (with items, in a transaction)
-export const createOrder = async (req, res) => {
+export const createOrder = catchAsync(async (req, res, next) => {
     const t = await sequelize.transaction();
     try {
         const { user_id, payment_method, items } = req.body;
 
         if (!user_id || !items || !Array.isArray(items) || items.length === 0) {
-            return res.status(400).json({ message: 'user_id and items[] are required' });
+            await t.rollback();
+            return next(new AppError('user_id and items[] are required', 400));
         }
 
         // Verify user exists
         const user = await User.findByPk(user_id);
         if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+            await t.rollback();
+            return next(new AppError('User not found', 404));
         }
 
         // Calculate totals and validate products
@@ -24,11 +28,11 @@ export const createOrder = async (req, res) => {
             const product = await Product.findByPk(item.product_id, { transaction: t });
             if (!product) {
                 await t.rollback();
-                return res.status(404).json({ error: `Product ID ${item.product_id} not found` });
+                return next(new AppError(`Product ID ${item.product_id} not found`, 404));
             }
             if (product.stock_qty < item.quantity) {
                 await t.rollback();
-                return res.status(400).json({ error: `Insufficient stock for "${product.name}". Available: ${product.stock_qty}` });
+                return next(new AppError(`Insufficient stock for "${product.name}". Available: ${product.stock_qty}`, 400));
             }
 
             const subtotal = parseFloat(product.price) * item.quantity;
@@ -71,66 +75,60 @@ export const createOrder = async (req, res) => {
             }]
         });
 
-        return res.status(201).json({ message: 'Order created', order: fullOrder });
+        return res.status(201).json({ success: true, message: 'Order created', order: fullOrder });
     } catch (err) {
         await t.rollback();
-        return res.status(500).json({ error: err.message });
+        next(err);
     }
-};
+});
 
 // GET all orders
-export const getAllOrders = async (_req, res) => {
-    try {
-        const orders = await Order.findAll({
-            include: [
-                { model: User, as: 'user', attributes: ['id', 'name', 'email'] },
-                {
-                    model: OrderItem, as: 'items',
-                    include: [{ model: Product, as: 'product', attributes: ['id', 'name', 'price'] }]
-                }
-            ],
-            order: [['createdAt', 'DESC']]
-        });
-        return res.json({ message: 'All orders', orders });
-    } catch (err) {
-        return res.status(500).json({ error: err.message });
-    }
-};
+export const getAllOrders = catchAsync(async (_req, res, next) => {
+    const limit = Math.max(1, Number(_req.query.limit) || 10);
+    const offset = Math.max(0, Number(_req.query.offset) || 0);
+    const orders = await Order.findAll({
+        attributes: { exclude: ['updatedAt'] },
+        include: [
+            { model: User, as: 'user', attributes: ['id', 'name', 'email', 'phone', 'address', 'role'] },
+            {
+                model: OrderItem, as: 'items',
+                attributes: { exclude: ['updatedAt'] },
+                include: [{ model: Product, as: 'product', attributes: ['id', 'name', 'price'] }]
+            }
+        ],
+        order: [['createdAt', 'DESC']]
+    });
+    return res.json({ success: true, message: 'All orders', count: orders.length, limit, offset, data: orders });
+});
 
 // GET order by ID
-export const getOrderById = async (req, res) => {
-    try {
-        const order = await Order.findByPk(req.params.id, {
-            include: [
-                { model: User, as: 'user', attributes: ['id', 'name', 'email'] },
-                {
-                    model: OrderItem, as: 'items',
-                    include: [{ model: Product, as: 'product', attributes: ['id', 'name', 'price'] }]
-                }
-            ]
-        });
-        if (!order) return res.status(404).json({ error: 'Order not found' });
-        return res.json(order);
-    } catch (err) {
-        return res.status(500).json({ error: err.message });
-    }
-};
+export const getOrderById = catchAsync(async (req, res, next) => {
+    const order = await Order.findByPk(req.params.id, {
+        attributes: { exclude: ['updatedAt'] },
+        include: [
+            { model: User, as: 'user', attributes: ['id', 'name', 'email', 'phone', 'address', 'role'] },
+            {
+                model: OrderItem, as: 'items',
+                attributes: { exclude: ['updatedAt'] },
+                include: [{ model: Product, as: 'product', attributes: ['id', 'name', 'price'] }]
+            }
+        ]
+    });
+    if (!order) return next(new AppError('Order not found', 404));
+    return res.json({ success: true, data: order });
+});
 
 // UPDATE order status
-export const updateOrderStatus = async (req, res) => {
-    try {
-        const order = await Order.findByPk(req.params.id);
-        if (!order) return res.status(404).json({ error: 'Order not found' });
+export const updateOrderStatus = catchAsync(async (req, res, next) => {
+    const order = await Order.findByPk(req.params.id);
+    if (!order) return next(new AppError('Order not found', 404));
 
-        const { status } = req.body;
-        const validStatuses = ['pending', 'paid', 'cancelled', 'completed'];
-        if (!validStatuses.includes(status)) {
-            return res.status(400).json({ message: `Status must be one of: ${validStatuses.join(', ')}` });
-        }
-
-        await order.update({ status });
-        return res.json({ message: 'Order status updated', order });
-    } catch (err) {
-        return res.status(500).json({ error: err.message });
+    const { status } = req.body;
+    const validStatuses = ['pending', 'paid', 'cancelled', 'completed'];
+    if (!validStatuses.includes(status)) {
+        return next(new AppError(`Status must be one of: ${validStatuses.join(', ')}`, 400));
     }
-};
+
+    await order.update({ status });
+    return res.json({ success: true, message: 'Order status updated', order });
+});

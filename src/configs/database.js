@@ -1,12 +1,14 @@
 import { Sequelize } from 'sequelize';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const sequelize = new Sequelize(
-  'api_basic',
-  'root',
-  '',
+  process.env.DB_NAME,
+  process.env.DB_USER,
+  process.env.DB_PASS,
 
   {
-    host: 'localhost',
+    host: process.env.DB_HOST,
     dialect: 'mysql'
   }
 );

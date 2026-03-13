@@ -7,12 +7,13 @@ import {
     deleteProduct
 } from '../controllers/product.controller.js';
 import upload from '../middlewares/upload.js';
+import { verifyToken } from '../middlewares/auth.js';
 const router = express.Router();
 
-router.post('/', upload.single('image'), createProduct);
+router.post('/', verifyToken, upload.single('image'), createProduct);
 router.get('/', getAllProducts);
 router.get('/:id', getProductById);
-router.put('/:id', upload.single('image'), updateProduct);
-router.delete('/:id', deleteProduct);
+router.put('/:id', verifyToken, upload.single('image'), updateProduct);
+router.delete('/:id', verifyToken, deleteProduct);
 
 export default router;

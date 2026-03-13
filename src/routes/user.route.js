@@ -1,13 +1,17 @@
 import express from 'express';
 import {
   createUser,
-  getAllUsers, 
+  getAllUsers,
   getUserById,
   updateUser,
   deleteUser
 } from '../controllers/user.controller.js';
 
+import { verifyToken } from '../middlewares/auth.js';
+
 const router = express.Router();
+
+router.use(verifyToken);
 
 // Create user
 router.post('/create', createUser);

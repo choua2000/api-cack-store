@@ -2,14 +2,14 @@ module.exports = {
     development: {
         username: 'root',
         password: '',
-        database: 'api_basic',
+        database: 'cack-api',
         host: 'localhost',
         dialect: 'mysql'
     },
     production: {
         username: 'root',
         password: '',
-        database: 'api_basic',
+        database: 'cack-api',
         host: 'localhost',
         dialect: 'mysql'
     }

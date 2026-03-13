@@ -1,5 +1,7 @@
-import { Product, Category } from '../models/index.js';
+import { Product, Category, sequelize } from '../models/index.js';
 import cloudinary from '../configs/cloudinary.js';
+import { catchAsync } from '../utils/catchAsync.js';
+import { AppError } from '../middlewares/error.js';
 
 // Helper: upload file buffer to Cloudinary
 const uploadToCloudinary = (fileBuffer) => {
@@ -16,16 +18,19 @@ const uploadToCloudinary = (fileBuffer) => {
 };
 
 // CREATE product
-export const createProduct = async (req, res) => {
+export const createProduct = catchAsync(async (req, res, next) => {
+    const transaction = await sequelize.transaction();
     try {
         const { name, description, price, cost_price, stock_qty, category_id } = req.body;
         if (!name || !price || !category_id) {
-            return res.status(400).json({ message: 'name, price, and category_id are required' });
+            await transaction.rollback();
+            return next(new AppError('name, price, and category_id are required', 400));
         }
         // Verify category exists
         const category = await Category.findByPk(category_id);
         if (!category) {
-            return res.status(404).json({ error: 'Category not found' });
+            await transaction.rollback();
+            return next(new AppError('Category not found', 404));
         }
 
         // Upload image to Cloudinary if file is attached
@@ -38,44 +43,46 @@ export const createProduct = async (req, res) => {
         const product = await Product.create({
             name, description, price, cost_price, stock_qty,
             category_id, image_url
-        });
-        return res.status(201).json({ message: 'Product created', product });
+        }, { transaction });
+
+        await transaction.commit();
+        return res.status(201).json({ success: true, message: 'Product created', product });
     } catch (err) {
-        console.log("Error: ", err);
-        return res.status(500).json({ error: err.message });
+        await transaction.rollback();
+        next(err);
     }
-};
+});
 
 // GET all products (with category)
-export const getAllProducts = async (_req, res) => {
-    try {
-        const products = await Product.findAll({
-            include: [{ model: Category, as: 'category', attributes: ['id', 'name'] }]
-        });
-        return res.json({ message: 'All products', products });
-    } catch (err) {
-        return res.status(500).json({ error: err.message });
-    }
-};
+export const getAllProducts = catchAsync(async (_req, res, next) => {
+    const limit = Math.max(1, Number(_req.query.limit) || 10);
+    const offset = Math.max(0, Number(_req.query.offset) || 0);
+    const products = await Product.findAll({
+        include: [{ model: Category, as: 'category', attributes: ['id', 'name'] }],
+        limit,
+        offset
+    });
+    return res.json({ success: true, message: 'All products', count: products.length, limit, offset, data: products });
+});
 
 // GET product by ID
-export const getProductById = async (req, res) => {
-    try {
-        const product = await Product.findByPk(req.params.id, {
-            include: [{ model: Category, as: 'category', attributes: ['id', 'name'] }]
-        });
-        if (!product) return res.status(404).json({ error: 'Product not found' });
-        return res.json(product);
-    } catch (err) {
-        return res.status(500).json({ error: err.message });
-    }
-};
+export const getProductById = catchAsync(async (req, res, next) => {
+    const product = await Product.findByPk(req.params.id, {
+        include: [{ model: Category, as: 'category', attributes: ['id', 'name'] }]
+    });
+    if (!product) return next(new AppError('Product not found', 404));
+    return res.json({ success: true, data: product });
+});
 
 // UPDATE product
-export const updateProduct = async (req, res) => {
+export const updateProduct = catchAsync(async (req, res, next) => {
+    const transaction = await sequelize.transaction();
     try {
         const product = await Product.findByPk(req.params.id);
-        if (!product) return res.status(404).json({ error: 'Product not found' });
+        if (!product) {
+            await transaction.rollback();
+            return next(new AppError('Product not found', 404));
+        }
 
         const { name, description, price, cost_price, stock_qty, category_id, status } = req.body;
 
@@ -94,31 +101,37 @@ export const updateProduct = async (req, res) => {
         await product.update({
             name, description, price, cost_price, stock_qty,
             category_id, image_url, status
-        });
-        return res.json({ message: 'Product updated', product });
+        }, { transaction });
+
+        await transaction.commit();
+        return res.json({ success: true, message: 'Product updated', product });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        await transaction.rollback();
+        next(err);
     }
-};
+});
 
 // DELETE product
-export const deleteProduct = async (req, res) => {
+export const deleteProduct = catchAsync(async (req, res, next) => {
+    const transaction = await sequelize.transaction();
     try {
         const product = await Product.findByPk(req.params.id);
-        if (!product) return res.status(404).json({ error: 'Product not found' });
+        if (!product) {
+            await transaction.rollback();
+            return next(new AppError('Product not found', 404));
+        }
 
         const imageUrl = product.image_url;
-        await product.destroy();
+        await product.destroy({ transaction });
 
         if (imageUrl) {
-            // Extracts the last 3 parts: 'api-basic', 'products', 'filename.ext'
-            // resulting in 'api-basic/products/filename'
             const publicId = imageUrl.split('/').slice(-3).join('/').split('.')[0];
             await cloudinary.uploader.destroy(publicId).catch(() => { });
         }
-
-        return res.json({ message: 'Product deleted Successfully' });
+        await transaction.commit();
+        return res.json({ success: true, message: 'Product deleted Successfully' });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        await transaction.rollback();
+        next(err);
     }
-};
+});
