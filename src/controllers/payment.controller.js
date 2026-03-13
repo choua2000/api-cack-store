@@ -28,7 +28,7 @@ export const createPaymentIntent = catchAsync(async (req, res, next) => {
     const paymentIntent = await stripe.paymentIntents.create(
         {
             amount: amount,
-            currency: "lak",
+            currency: "usd",
             metadata: {
                 order_id: order.id.toString(),
             }
