@@ -43,7 +43,7 @@ export const createProduct = catchAsync(async (req, res, next) => {
         const product = await Product.create({
             name, description, price, cost_price, stock_qty,
             category_id, image_url
-        }, { transaction });
+        }, { transaction: transaction });
 
         await transaction.commit();
         return res.status(201).json({ success: true, message: 'Product created', product });
@@ -91,18 +91,19 @@ export const updateProduct = catchAsync(async (req, res, next) => {
         if (req.file) {
             // Delete old image from Cloudinary if it exists
             if (product.image_url) {
-                const publicId = product.image_url.split('/').slice(-3).join('/').split('.')[0];
+                const parts = product.image_url.split('/');
+                const lastParts = parts.slice(-3);
+                const filePath = lastParts.join('/');
+                const publicId = filePath.split('.')[0];
                 await cloudinary.uploader.destroy(publicId).catch(() => { });
             }
             const result = await uploadToCloudinary(req.file.buffer);
             image_url = result.secure_url;
         }
-
         await product.update({
             name, description, price, cost_price, stock_qty,
             category_id, image_url, status
-        }, { transaction });
-
+        }, { transaction: transaction });
         await transaction.commit();
         return res.json({ success: true, message: 'Product updated', product });
     } catch (err) {

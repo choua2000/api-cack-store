@@ -34,6 +34,7 @@ import productRoutes from './src/routes/product.route.js';
 import orderRoutes from './src/routes/order.route.js';
 import uploadRoutes from './src/routes/upload.route.js';
 import paymentRoutes from './src/routes/payment.route.js';
+import cartRoutes from './src/routes/cart.route.js';
 import { errorHandler, AppError } from './src/middlewares/error.js';
 
 
@@ -83,6 +84,7 @@ async function start() {
         app.use('/api/orders', orderRoutes);
         app.use('/api/upload', uploadRoutes);
         app.use('/api/payment', paymentRoutes);
+        app.use('/api/cart', cartRoutes);
 
         // 404 Catch-all for undefined routes
         app.use((req, res, next) => {

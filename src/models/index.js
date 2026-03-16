@@ -5,6 +5,8 @@ import Product from './product.model.js';
 import Order from './order.model.js';
 import OrderItem from './order_item.model.js';
 import StripePayment from './stripe_payment.model.js';
+import Cart from './cart.model.js';
+import CartItem from './cart_item.model.js';
 
 // ─── Associations ──────────────────────────────────────────
 
@@ -28,4 +30,16 @@ OrderItem.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
 Order.hasOne(StripePayment, { foreignKey: 'order_id', as: 'paymentInfo' });
 StripePayment.belongsTo(Order, { foreignKey: 'order_id', as: 'order' });
 
-export { sequelize, User, Category, Product, Order, OrderItem, StripePayment };
+// User → Cart (One-to-One)
+User.hasOne(Cart, { foreignKey: 'user_id', as: 'cart' });
+Cart.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+// Cart → CartItems (One-to-Many)
+Cart.hasMany(CartItem, { foreignKey: 'cart_id', as: 'items' });
+CartItem.belongsTo(Cart, { foreignKey: 'cart_id', as: 'cart' });
+
+// Product → CartItems (One-to-Many)
+Product.hasMany(CartItem, { foreignKey: 'product_id', as: 'cartItems' });
+CartItem.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
+
+export { sequelize, User, Category, Product, Order, OrderItem, StripePayment, Cart, CartItem };
