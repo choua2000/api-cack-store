@@ -15,6 +15,7 @@ export const verifyToken = (req, res, next) => {
         req.user = decoded;
         next(); // ให้ไปทำงานต่อที่ Controller
     } catch (err) {
+        console.log("err", err);
         return res.status(401).json({ message: 'Unauthorized!' });
     }
 };

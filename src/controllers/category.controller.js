@@ -15,7 +15,7 @@ export const createCategory = catchAsync(async (req, res, next) => {
 // GET all categories
 export const getAllCategories = catchAsync(async (_req, res, next) => {
     const categories = await Category.findAll();
-    return res.json({ success: true, message: 'All categories', categories });
+    return res.json({ success: true, message: 'All categories', data: categories });
 });
 
 // GET category by ID

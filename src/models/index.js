@@ -7,6 +7,7 @@ import OrderItem from './order_item.model.js';
 import StripePayment from './stripe_payment.model.js';
 import Cart from './cart.model.js';
 import CartItem from './cart_item.model.js';
+import Booking from './booking.model.js';
 
 // ─── Associations ──────────────────────────────────────────
 
@@ -42,4 +43,8 @@ CartItem.belongsTo(Cart, { foreignKey: 'cart_id', as: 'cart' });
 Product.hasMany(CartItem, { foreignKey: 'product_id', as: 'cartItems' });
 CartItem.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
 
-export { sequelize, User, Category, Product, Order, OrderItem, StripePayment, Cart, CartItem };
+// User → Bookings (One-to-Many)
+User.hasMany(Booking, { foreignKey: 'user_id', as: 'bookings' });
+Booking.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+export { sequelize, User, Category, Product, Order, OrderItem, StripePayment, Cart, CartItem, Booking };

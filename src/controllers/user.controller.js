@@ -1,4 +1,4 @@
-import { User } from '../models/index.js';
+import { User, Order } from '../models/index.js';
 import bcrypt from 'bcrypt';
 import { catchAsync } from '../utils/catchAsync.js';
 import { AppError } from '../middlewares/error.js';
@@ -23,7 +23,7 @@ export const getAllUsers = catchAsync(async (_req, res, next) => {
   const users = await User.findAll({
     attributes: { exclude: ['password'] }
   });
-  res.json({ success: true, message: 'All users', users });
+  res.json({ success: true, message: 'All users', data: users });
 });
 
 // GET user by ID
@@ -37,11 +37,11 @@ export const getUserById = catchAsync(async (req, res, next) => {
 
 // UPDATE user
 export const updateUser = catchAsync(async (req, res, next) => {
-  const { name, email, phone, password, address, role } = req.body;
+  const { name, email, phone, password, address } = req.body;
   const user = await User.findByPk(req.params.id);
   if (!user) return next(new AppError('User not found', 404));
 
-  const updateData = { name, email, phone, address, role };
+  const updateData = { name, email, phone, address };
   if (password) {
     updateData.password = await bcrypt.hash(password, 10);
   }
@@ -56,4 +56,17 @@ export const deleteUser = catchAsync(async (req, res, next) => {
   const deleted = await User.destroy({ where: { id: req.params.id } });
   if (!deleted) return next(new AppError('User not found', 404));
   res.json({ success: true, message: 'User deleted' });
+});
+
+
+// GET user profile
+export const getProfile = catchAsync(async (req, res, next) => {
+  const user = await User.findByPk(req.user.id, {
+    attributes: { exclude: ['password'] },
+    include: [
+      { model: Order, as: 'orders', attributes: ['id', 'total_amount', 'status', 'createdAt'] }
+    ]
+  });
+  if (!user) return next(new AppError('User not found', 404));
+  res.json({ success: true, data: user });
 });

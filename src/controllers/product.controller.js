@@ -1,4 +1,5 @@
 import { Product, Category, sequelize } from '../models/index.js';
+import { Op } from 'sequelize';
 import cloudinary from '../configs/cloudinary.js';
 import { catchAsync } from '../utils/catchAsync.js';
 import { AppError } from '../middlewares/error.js';
@@ -7,7 +8,7 @@ import { AppError } from '../middlewares/error.js';
 const uploadToCloudinary = (fileBuffer) => {
     return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
-            { folder: 'api-basic/products' },
+            { folder: 'products' },
             (error, result) => {
                 if (error) reject(error);
                 else resolve(result);
@@ -135,4 +136,28 @@ export const deleteProduct = catchAsync(async (req, res, next) => {
         await transaction.rollback();
         next(err);
     }
+});
+
+// SEARCH products by name
+export const searchProductsByName = catchAsync(async (req, res, next) => {
+    const { name } = req.query;
+    console.log("name", name);
+
+    if (!name) {
+        return next(new AppError('Search name is required', 400));
+    }
+
+    const products = await Product.findAll({
+        where: {
+            name: {
+                [Op.like]: `%${name}%`
+            }
+        },
+        include: [{ model: Category, as: 'category', attributes: ['id', 'name'] }]
+    });
+    return res.json({
+        success: true,
+        count: products.length,
+        data: products
+    });
 });

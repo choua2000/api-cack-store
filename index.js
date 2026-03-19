@@ -35,6 +35,7 @@ import orderRoutes from './src/routes/order.route.js';
 import uploadRoutes from './src/routes/upload.route.js';
 import paymentRoutes from './src/routes/payment.route.js';
 import cartRoutes from './src/routes/cart.route.js';
+import bookingRoutes from './src/routes/booking.route.js';
 import { errorHandler, AppError } from './src/middlewares/error.js';
 
 
@@ -58,7 +59,7 @@ app.use('/api/', limiter);
 
 // Optimization & Logging
 app.use(compression());
-app.use(morgan('dev'));
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 // Webhook route needs raw body, so we mount it BEFORE express.json()
 app.use('/api/payment/webhook', express.raw({ type: 'application/json' }), (req, res, next) => {
@@ -85,6 +86,7 @@ async function start() {
         app.use('/api/upload', uploadRoutes);
         app.use('/api/payment', paymentRoutes);
         app.use('/api/cart', cartRoutes);
+        app.use('/api/bookings', bookingRoutes);
 
         // 404 Catch-all for undefined routes
         app.use((req, res, next) => {

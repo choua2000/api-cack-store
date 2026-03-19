@@ -4,28 +4,34 @@ import {
   getAllUsers,
   getUserById,
   updateUser,
-  deleteUser
+  deleteUser,
+  getProfile
 } from '../controllers/user.controller.js';
 
 import { verifyToken } from '../middlewares/auth.js';
+import { authorize } from '../constants/authorize.js';
+import { ROLES } from '../constants/roles.js';
 
 const router = express.Router();
 
 router.use(verifyToken);
 
 // Create user
-router.post('/create', createUser);
+router.post('/create', authorize(ROLES.ADMIN), createUser);
 
 // Get all users
-router.get('/getall', getAllUsers);
+router.get('/getall', authorize(ROLES.ADMIN), getAllUsers);
 
 // Get one user
-router.get('/getid/:id', getUserById);
+router.get('/getid/:id', authorize(ROLES.ADMIN), getUserById);
 
 // Update user
-router.put('/update/:id', updateUser);
+router.put('/update/:id', authorize(ROLES.ADMIN, ROLES.CUSTOMER), updateUser);
 
 // Delete user
-router.delete('/delete/:id', deleteUser);
+router.delete('/delete/:id', authorize(ROLES.ADMIN), deleteUser);
+
+// Get user profile
+router.get('/profile', authorize(ROLES.ADMIN, ROLES.CUSTOMER), getProfile);
 
 export default router;

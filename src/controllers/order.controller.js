@@ -6,15 +6,15 @@ import { AppError } from '../middlewares/error.js';
 export const createOrder = catchAsync(async (req, res, next) => {
     const t = await sequelize.transaction();
     try {
-        const { user_id, payment_method, items } = req.body;
+        const { payment_method, items } = req.body;
 
-        if (!user_id || !items || !Array.isArray(items) || items.length === 0) {
+        if (!items || !Array.isArray(items) || items.length === 0) {
             await t.rollback();
-            return next(new AppError('user_id and items[] are required', 400));
+            return next(new AppError('items[] are required', 400));
         }
 
         // Verify user exists
-        const user = await User.findByPk(user_id);
+        const user = await User.findByPk(req.user.id);
         if (!user) {
             await t.rollback();
             return next(new AppError('User not found', 404));
@@ -54,7 +54,7 @@ export const createOrder = catchAsync(async (req, res, next) => {
 
         // Create order
         const order = await Order.create(
-            { user_id, total_amount, payment_method, status: 'pending' },
+            { user_id: req.user.id, total_amount, payment_method, status: 'pending' },
             { transaction: t }
         );
 

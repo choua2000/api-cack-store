@@ -35,63 +35,90 @@ export const getCart = catchAsync(async (req, res, next) => {
 
 // Add item to cart
 export const addToCart = catchAsync(async (req, res, next) => {
-    const { product_id, quantity = 1 } = req.body;
 
-    if (!product_id) return next(new AppError('Product ID is required', 400));
+    const { product_id, quantity } = req.body;
 
-    // Check if product exists
+    if (!product_id) {
+        return next(new AppError('Product ID is required', 400));
+    }
+
+    const qty = Number(quantity);
+
+    if (!Number.isInteger(qty) || qty <= 0) {
+        return next(new AppError('Quantity must be a positive integer', 400));
+    }
+
+    // Check product
     const product = await Product.findByPk(product_id);
-    if (!product) return next(new AppError('Product not found', 404));
 
-    // Ensure cart exists for user
+    if (!product) {
+        return next(new AppError('Product not found', 404));
+    }
+
+    // Check stock
+    if (qty > product.stock_qty) {
+        return next(new AppError('Quantity exceeds available stock', 400));
+    }
+
+    // Find or create cart
     let cart = await Cart.findOne({ where: { user_id: req.user.id } });
+
     if (!cart) {
         cart = await Cart.create({ user_id: req.user.id });
     }
 
-    // Check if item already exists in cart
+    // Find existing item
     let cartItem = await CartItem.findOne({
         where: { cart_id: cart.id, product_id }
     });
 
     if (cartItem) {
-        // Increment quantity
-        cartItem.quantity += parseInt(quantity);
+        cartItem.quantity += qty;
         await cartItem.save();
     } else {
-        // Create new cart item
         cartItem = await CartItem.create({
             cart_id: cart.id,
             product_id,
-            quantity: parseInt(quantity)
+            quantity: qty
         });
     }
 
-    res.status(200).json({
+    res.status(201).json({
         success: true,
         message: 'Item added to cart',
         data: cartItem
     });
+
 });
 
 // Update cart item quantity
 export const updateCartItem = catchAsync(async (req, res, next) => {
-    const { itemId } = req.params;
-    const { quantity } = req.body;
 
-    if (!quantity || quantity < 1) {
-        return next(new AppError('Quantity must be at least 1', 400));
+    const itemId = Number(req.params.itemId);
+    const qty = Number(req.body.qty);
+
+    if (!Number.isInteger(itemId)) {
+        return next(new AppError('Invalid cart item id', 400));
     }
 
-    const cartItem = await CartItem.findByPk(itemId, {
-        include: [{ model: Cart, as: 'cart' }]
+    if (!Number.isInteger(qty) || qty < 1) {
+        return next(new AppError('Quantity must be a positive integer', 400));
+    }
+
+    const cartItem = await CartItem.findOne({
+        where: { id: itemId },
+        include: [{
+            model: Cart,
+            as: 'cart',
+            attributes: ['user_id']
+        }]
     });
 
     if (!cartItem || cartItem.cart.user_id !== req.user.id) {
         return next(new AppError('Cart item not found', 404));
     }
 
-    cartItem.quantity = parseInt(quantity);
+    cartItem.quantity = qty;
     await cartItem.save();
 
     res.status(200).json({
@@ -99,14 +126,24 @@ export const updateCartItem = catchAsync(async (req, res, next) => {
         message: 'Cart item updated',
         data: cartItem
     });
-});
 
+});
 // Remove item from cart
 export const removeFromCart = catchAsync(async (req, res, next) => {
-    const { itemId } = req.params;
 
-    const cartItem = await CartItem.findByPk(itemId, {
-        include: [{ model: Cart, as: 'cart' }]
+    const itemId = Number(req.params.itemId);
+
+    if (!Number.isInteger(itemId)) {
+        return next(new AppError('Invalid cart item id', 400));
+    }
+
+    const cartItem = await CartItem.findOne({
+        where: { id: itemId },
+        include: [{
+            model: Cart,
+            as: 'cart',
+            attributes: ['user_id']
+        }]
     });
 
     if (!cartItem || cartItem.cart.user_id !== req.user.id) {
@@ -119,6 +156,7 @@ export const removeFromCart = catchAsync(async (req, res, next) => {
         success: true,
         message: 'Item removed from cart'
     });
+
 });
 
 // Clear cart
