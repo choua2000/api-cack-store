@@ -84,7 +84,7 @@ export const createOrder = catchAsync(async (req, res, next) => {
 
 // GET all orders
 export const getAllOrders = catchAsync(async (_req, res, next) => {
-    const limit = Math.max(1, Number(_req.query.limit) || 10);
+    const limit = Math.max(1, Number(_req.query.limit) || 20);
     const offset = Math.max(0, Number(_req.query.offset) || 0);
     const orders = await Order.findAll({
         attributes: { exclude: ['updatedAt'] },

@@ -8,6 +8,10 @@ export const createCategory = catchAsync(async (req, res, next) => {
     if (!name) {
         return next(new AppError('Category name is required', 400));
     }
+    const existingCategory = await Category.findOne({ where: { name } });
+    if (existingCategory) {
+        return next(new AppError('Category already exists', 400));
+    }
     const category = await Category.create({ name, description });
     return res.status(201).json({ success: true, message: 'Category created', category });
 });
@@ -30,6 +34,10 @@ export const updateCategory = catchAsync(async (req, res, next) => {
     const category = await Category.findByPk(req.params.id);
     if (!category) return next(new AppError('Category not found', 404));
     const { name, description } = req.body;
+    const existingCategory = await Category.findOne({ where: { name} });
+    if (existingCategory) {
+        return next(new AppError('Category already exists', 400));
+    }
     await category.update({ name, description });
     return res.json({ success: true, message: 'Category updated', category });
 });
