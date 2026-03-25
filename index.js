@@ -71,6 +71,11 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
+// Health check route
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // Optimization & Logging
 app.use(compression());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
@@ -90,6 +95,13 @@ async function start() {
     try {
         await sequelize.authenticate();
         console.log('DB Connected Successfully.');
+
+        // Sync models (Creates tables if they don't exist in dev)
+        if (process.env.NODE_ENV === 'development') {
+            console.log('Syncing database models... (Environment:', process.env.NODE_ENV, ')');
+            await sequelize.sync();
+            console.log('All models were synchronized successfully.');
+        }
 
         // Mount routes
         app.use('/api/users', userRoutes);

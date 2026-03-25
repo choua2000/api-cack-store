@@ -1,0 +1,35 @@
+version: '3.8'
+services:
+  db:
+    #connect to mysql
+    image: mysql:8.0
+    container_name: cake-db
+    environment:
+      MYSQL_ROOT_PASSWORD:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_DATABASE: cack-api
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+  api:
+    #connect to api 
+    build: .
+    container_name: cake-api
+    ports:
+      - "5001:5000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      DB_USER: root
+      DB_PASS:
+      DB_NAME: cack-api
+      PORT: 5000
+
+volumes:
+  db_data:
