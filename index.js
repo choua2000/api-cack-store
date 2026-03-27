@@ -44,8 +44,8 @@ const app = express();
 // Security Middlewares
 app.use(helmet());
 const allowedOrigins = [
-    process.env.CLIENT_URL,
-    process.env.ADMIN_URL
+    ...(process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',') : []),
+    ...(process.env.ADMIN_URL ? process.env.ADMIN_URL.split(',') : [])
 ];
 
 app.use(cors({

@@ -49,16 +49,20 @@ export const login = catchAsync(async (req, res, next) => {
 
     const user = await findUserByEmail(email);
     if (!user) {
-        return next(new AppError('Invalid credentials', 401));
+        return next(new AppError('Invalid credentials Email', 401));
     }
 
     if (user.role !== ROLES.CUSTOMER) {
         return next(new AppError('Access denied. Customer privileges required.', 403));
     }
 
+    if (!user.isActive) {
+        return next(new AppError('Your account is inactive. Please contact support.', 403));
+    }
+
     const isValid = await isPasswordValid(password, user.password);
     if (!isValid) {
-        return next(new AppError('Invalid credentials', 401));
+        return next(new AppError('Invalid credentials Password', 401));
     }
 
     const token = generateToken(user);
@@ -114,6 +118,10 @@ export const loginAdmin = catchAsync(async (req, res, next) => {
 
     if (user.role !== ROLES.ADMIN) {
         return next(new AppError('Access denied. Administrator privileges required.', 403));
+    }
+
+    if (!user.isActive) {
+        return next(new AppError('Your account is inactive. Please contact support.', 403));
     }
 
     const isValid = await isPasswordValid(password, user.password);

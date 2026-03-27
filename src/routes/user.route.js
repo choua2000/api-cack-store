@@ -5,7 +5,8 @@ import {
   getUserById,
   updateUser,
   deleteUser,
-  getProfile
+  getProfile,
+  updateStatus
 } from '../controllers/user.controller.js';
 
 import { verifyToken } from '../middlewares/auth.js';
@@ -33,5 +34,8 @@ router.delete('/delete/:id', authorize(ROLES.ADMIN), deleteUser);
 
 // Get user profile
 router.get('/profile', authorize(ROLES.ADMIN, ROLES.CUSTOMER), getProfile);
+
+// Update user status
+router.put('/update-status/:id', authorize(ROLES.ADMIN), updateStatus);
 
 export default router;

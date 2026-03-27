@@ -70,3 +70,13 @@ export const getProfile = catchAsync(async (req, res, next) => {
   if (!user) return next(new AppError('User not found', 404));
   res.json({ success: true, data: user });
 });
+
+//MEAN: UPDATE STATUS USER
+export const updateStatus = catchAsync(async (req, res, next) => {
+  const { isActive } = req.body;
+  const user = await User.findByPk(req.params.id);
+  if (!user) return next(new AppError('User not found', 404));
+  user.isActive = isActive;
+  await user.save();
+  res.json({ success: true, message: 'User status updated', user });
+});
